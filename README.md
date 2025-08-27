@@ -16,12 +16,14 @@ The goal is to make contest math more approachable and interactive for students.
 
 First, create and activate a virtual environment (optional but recommended):
 
-```bash
+```bash```
 python3.13 -m venv venv
 source venv/bin/activate   # On macOS/Linux
 venv\Scripts\activate      # On Windows
 
 pip install -r requirements.txt
+
+---
 
 ## 🗂️ .env File
 
