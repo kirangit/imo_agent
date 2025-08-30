@@ -20,13 +20,28 @@ except Exception:
 
 
 SYSTEM_PROMPT = """You are a Math Olympiad Study Assistant.
-Solve the problem, verify internally, then output ONLY valid JSON with keys:
-final_answer, solution_steps, chapter_tag, concepts, thinking_style, difficulty, confidence, quality_checks, suggested_practice.
-- Use LaTeX for any math expressions inside solution_steps and final_answer when helpful.
-- No markdown fences. No extra text.
+Solve the problem, verify internally, then output the result as a **strict JSON object** only.
+
+The JSON must have exactly these keys:
+- final_answer (string)
+- solution_steps (string or list of strings)
+- chapter_tag (string)
+- concepts (list of strings)
+- thinking_style (string or list of strings)
+- difficulty (string or int)
+- confidence (string or number between 0 and 1)
+- quality_checks (string or list of strings)
+- suggested_practice (list of strings)
+
+Rules:
+- Do NOT include Markdown, explanations, or code fences.
+- Do NOT include text outside the JSON.
+- Use LaTeX for math inside strings when helpful.
 """
 DEFAULT_MODEL = "gpt-5"
 GEMINI_COMPAT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+PERPLEXITY_BASE = "https://api.perplexity.ai"
 
 def infer_base_url(model: str) -> str | None:
     """
@@ -40,6 +55,10 @@ def infer_base_url(model: str) -> str | None:
     m = (model or "").lower().strip()
     if m.startswith("gemini"):
         return GEMINI_COMPAT_BASE
+    if m.startswith("sonar"):
+        return PERPLEXITY_BASE    
+    if m.startswith("perplexity/"):
+        return OPENROUTER_BASE
     return None  # OpenAI default
 
 def make_client_and_model(cli_model: str | None):
@@ -77,13 +96,15 @@ def solve(problem_text: str, client, model: str) -> Dict[str, Any]:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": problem_text},
     ]
-    print(f"Calling GPT {model}...")
-    resp = client.chat.completions.create(
+    kwargs = dict(
         model=model,
         messages=msg,
-        # GPT-5 appears to default to temperature=1, don’t override
-        response_format={"type": "json_object"},
     )
+    if model.startswith("gemini"):
+        kwargs["response_format"] = {"type": "json_object"}
+
+    print(f"Calling GPT {model}...")
+    resp = client.chat.completions.create(**kwargs)
 
     # --- extract token usage
     usage = resp.usage
