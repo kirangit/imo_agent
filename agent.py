@@ -17,13 +17,7 @@ except Exception:
     def latex_to_text(s: str) -> str:
         return s
 
-# ----------------------------
-# Load environment variables
-# ----------------------------
-load_dotenv()
 
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 SYSTEM_PROMPT = """You are a Math Olympiad Study Assistant.
 Solve the problem, verify internally, then output ONLY valid JSON with keys:
@@ -31,6 +25,35 @@ final_answer, solution_steps, chapter_tag, concepts, thinking_style, difficulty,
 - Use LaTeX for any math expressions inside solution_steps and final_answer when helpful.
 - No markdown fences. No extra text.
 """
+DEFAULT_MODEL = "gpt-5"
+GEMINI_COMPAT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+def infer_base_url(model: str) -> str | None:
+    """
+    Auto-select base_url from model name unless LLM_BASE_URL is set.
+    - gemini* -> Google OpenAI-compatible endpoint
+    - otherwise -> default (OpenAI)
+    """
+    forced = os.getenv("LLM_BASE_URL", "").strip() or None
+    if forced:
+        return forced
+    m = (model or "").lower().strip()
+    if m.startswith("gemini"):
+        return GEMINI_COMPAT_BASE
+    return None  # OpenAI default
+
+def make_client_and_model(cli_model: str | None):
+    load_dotenv()
+    api_key = os.getenv("LLM_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing LLM_API_KEY in environment (.env).")
+
+    model = (cli_model or os.getenv("LLM_MODEL") or DEFAULT_MODEL).strip()
+    base_url = infer_base_url(model)
+
+    client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+    return client, model
+
 def ensure_list(field):
     if isinstance(field, list):
         return [str(x).strip() for x in field if str(x).strip()]
@@ -48,19 +71,31 @@ def repair_json(s: str) -> str:
     end = s.rfind("}")
     return s[start:end+1] if start != -1 and end != -1 else s
 
-def solve(problem_text: str, model: str) -> Dict[str, Any]:
+def solve(problem_text: str, client, model: str) -> Dict[str, Any]:
     """Send problem to GPT and return structured JSON."""
-    client = OpenAI(api_key=OPENAI_API_KEY)
     msg = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": problem_text},
     ]
+    print(f"Calling GPT {model}...")
     resp = client.chat.completions.create(
         model=model,
         messages=msg,
         # GPT-5 appears to default to temperature=1, don’t override
         response_format={"type": "json_object"},
     )
+
+    # --- extract token usage
+    usage = resp.usage
+    prompt_tokens = usage.prompt_tokens
+    completion_tokens = usage.completion_tokens
+    total_tokens = usage.total_tokens
+
+    print(f"\n--- Token Usage ---")
+    print(f"Prompt tokens:     {prompt_tokens}")
+    print(f"Completion tokens: {completion_tokens}")
+    print(f"Total tokens:      {total_tokens}")
+    
     raw = resp.choices[0].message.content
     #print(json.dumps(json.loads(raw), indent=2))  # Debug: show raw response
     try:
@@ -135,8 +170,8 @@ def main():
                         help="Print raw LaTeX instead of converting to plaintext.")
     parser.add_argument("--file", type=str, default=None,
                         help="Read problem from a file instead of stdin.")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL,
-                        help=f"Override model (default from .env or {DEFAULT_MODEL})")
+    parser.add_argument("--model", type=str, default=None,
+                        help=f"Override model (default from .env)")
     args = parser.parse_args()
 
     if args.file:
@@ -151,7 +186,9 @@ def main():
         print("No problem provided. Exiting.")
         sys.exit(1)
 
-    result = solve(problem_text=problem, model=args.model)
+    client, model = make_client_and_model(args.model)
+
+    result = solve(problem_text=problem, client=client, model=model)
     pretty_print(result, show_latex_raw=args.latex_raw)
 
 if __name__ == "__main__":

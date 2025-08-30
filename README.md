@@ -28,8 +28,8 @@ pip install -r requirements.txt
 ## 🗂️ .env File
 
 Create a .env file in the project root with the following content:
-OPENAI_API_KEY=your-api-key-here
-OPENAI_MODEL=gpt-5
+LLM_API_KEY=your-api-key-here
+LLM_MODEL=gpt-5
 
 ## ▶️ Usage
 
