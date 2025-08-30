@@ -16,39 +16,59 @@ The goal is to make contest math more approachable and interactive for students.
 
 First, create and activate a virtual environment (optional but recommended):
 
-```bash```
+```bash
 python3.13 -m venv venv
 source venv/bin/activate   # On macOS/Linux
 venv\Scripts\activate      # On Windows
+```
 
+Install the required packages
+
+```bash
 pip install -r requirements.txt
-
+```
 ---
 
 ## 🗂️ .env File
 
-Create a .env file in the project root with the following content:
+Create a `.env` file in the project root with the following content:
+
+```env
 LLM_API_KEY=your-api-key-here
 LLM_MODEL=gpt-5
+```
+
+---
 
 ## ▶️ Usage
 
 ### Run interactively
+```bash
 python agent.py
+```
 Paste a problem and press:
-    Ctrl-D (Linux/macOS)
-    Ctrl-Z Enter (Windows)
+- `Ctrl-D` (Linux/macOS)  
+- `Ctrl-Z` + `Enter` (Windows)
 
 ### Run with a problem file
+```bash
 python agent.py --file problem.txt
+```
 
 ### Override model at runtime
+```bash
 python agent.py --model gpt-4.1
+```
 
 ### Show raw LaTeX (instead of converted Unicode/plaintext)
+```bash
 python agent.py --latex-raw
+```
+
+---
 
 ## 📌 Notes
-LaTeX output from the model is automatically converted to human-readable Unicode for CLI display (using pylatexenc).
-Use --latex-raw if you prefer to see the raw LaTeX strings.
-The tool expects a single problem as input at a time.
+
+- LaTeX output from the model is automatically converted to human-readable Unicode for CLI display (using `pylatexenc`).  
+- Use `--latex-raw` if you prefer to see the raw LaTeX strings.  
+- The tool expects a single problem as input at a time.
