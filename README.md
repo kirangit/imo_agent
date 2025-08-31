@@ -67,6 +67,13 @@ python agent.py --latex-raw
 
 ---
 
+## ▶️ Youtube transcript downloader Usage
+
+```bash
+python youtube_transcript_downloader.py "IMO 2024 problem 5" --outdir out
+```
+---
+
 ## 📌 Notes
 
 - LaTeX output from the model is automatically converted to human-readable Unicode for CLI display (using `pylatexenc`).  
